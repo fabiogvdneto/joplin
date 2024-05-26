@@ -5,6 +5,8 @@ import iterateItems from './gui/ResizableLayout/utils/iterateItems';
 import { LayoutItem } from './gui/ResizableLayout/utils/types';
 import validateLayout from './gui/ResizableLayout/utils/validateLayout';
 import Logger from '@joplin/utils/Logger';
+import { INotyfNotificationOptions, NotyfNotification } from 'notyf';
+import { DeepPartial } from 'redux';
 
 const logger = Logger.create('app.reducer');
 
@@ -30,6 +32,15 @@ export interface EditorScrollPercents {
 	[noteId: string]: number;
 }
 
+export interface AppStateNotifications {
+	[id: string]: {
+		// The next notification waiting to be shown.
+		next: DeepPartial<INotyfNotificationOptions>;
+		// Notification that is currently being displayed to the end user.
+		current: NotyfNotification;
+	};
+}
+
 export interface AppState extends State {
 	route: AppStateRoute;
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Old code before rule was applied
@@ -52,6 +63,7 @@ export interface AppState extends State {
 	mainLayout: LayoutItem;
 	dialogs: AppStateDialog[];
 	isResettingLayout: boolean;
+	notifications: AppStateNotifications;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Old code before rule was applied
@@ -76,6 +88,7 @@ export function createAppDefaultState(windowContentSize: any, resourceEditWatche
 		startupPluginsLoaded: false,
 		dialogs: [],
 		isResettingLayout: false,
+		notifications: {},
 		...resourceEditWatcherDefaultState,
 	};
 }
@@ -86,6 +99,93 @@ export default function(state: AppState, action: any) {
 
 	try {
 		switch (action.type) {
+
+		case 'INTEROP_IMPORT_EXEC':
+
+			{
+				const notifications = { ...newState.notifications };
+				const id = `interop:import:${action.path}`;
+				const next = {
+					type: 'loading',
+					message: action.feedback,
+					duration: 0,
+				};
+
+				notifications[id] = { ...notifications[id], next: next };
+
+				newState = { ...state, notifications: notifications };
+			}
+			break;
+
+		case 'INTEROP_IMPORT_COMPLETE':
+
+			{
+				const notifications = { ...newState.notifications };
+				const id = `interop:import:${action.path}`;
+				const next = {
+					type: 'success',
+					message: action.feedback,
+				};
+
+				notifications[id] = { ...notifications[id], next: next };
+
+				newState = { ...state, notifications: notifications };
+			}
+			break;
+
+		case 'INTEROP_EXPORT_EXEC':
+
+			{
+				const notifications = { ...newState.notifications };
+				const id = `interop:export:${action.path}`;
+				const next = {
+					type: 'loading',
+					message: action.feedback,
+					duration: 0,
+				};
+
+				notifications[id] = { ...notifications[id], next: next };
+
+				newState = { ...state, notifications: notifications };
+			}
+			break;
+
+		case 'INTEROP_EXPORT_COMPLETE':
+
+			{
+				const notifications = { ...newState.notifications };
+				const id = `interop:export:${action.path}`;
+				const next = {
+					type: 'success',
+					message: action.feedback,
+				};
+
+				notifications[id] = { ...notifications[id], next: next };
+
+				newState = { ...state, notifications: notifications };
+			}
+			break;
+
+		case 'NOTIFICATION_OPEN':
+
+			{
+				const notifications = { ...newState.notifications };
+
+				if (notifications[action.id].next.duration === 0) {
+					// If notification duration is infinite (0), it must be
+					// dismissed at some point, so we need to store it.
+					notifications[action.id] = {
+						current: action.notification,
+						next: undefined,
+					};
+				} else {
+					// Otherwise, we do not need it anymore.
+					delete notifications[action.id];
+				}
+
+				newState = { ...state, notifications: notifications };
+			}
+			break;
 
 		case 'NAV_BACK':
 		case 'NAV_GO':

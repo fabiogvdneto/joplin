@@ -1,5 +1,4 @@
 import InteropService from '@joplin/lib/services/interop/InteropService';
-import CommandService from '@joplin/lib/services/CommandService';
 import shim from '@joplin/lib/shim';
 import { ExportModuleOutputFormat, ExportOptions, FileSystemItem } from '@joplin/lib/services/interop/types';
 import { ExportModule } from '@joplin/lib/services/interop/Module';
@@ -196,7 +195,11 @@ export default class InteropServiceHelper {
 
 		if (Array.isArray(path)) path = path[0];
 
-		void CommandService.instance().execute('showModalMessage', _('Exporting to "%s" as "%s" format. Please wait...', path, module.format));
+		_dispatch({
+			type: 'INTEROP_EXPORT_EXEC',
+			path: path,
+			feedback: _('Exporting to "%s" as "%s" format. Please wait...', path, module.format),
+		});
 
 		const exportOptions: ExportOptions = {};
 		exportOptions.path = path;
@@ -215,12 +218,22 @@ export default class InteropServiceHelper {
 			const result = await service.export(exportOptions);
 			// eslint-disable-next-line no-console
 			console.info('Export result: ', result);
+
+			_dispatch({
+				type: 'INTEROP_EXPORT_COMPLETE',
+				path: path,
+				feedback: _('Successfully exported to %s.', path),
+			});
 		} catch (error) {
 			console.error(error);
 			bridge().showErrorMessageBox(_('Could not export notes: %s', error.message));
-		}
 
-		void CommandService.instance().execute('hideModalMessage');
+			_dispatch({
+				type: 'INTEROP_EXPORT_COMPLETE',
+				path: path,
+				feedback: _('Could not export notes: %s.', error.message),
+			});
+		}
 	}
 
 }
